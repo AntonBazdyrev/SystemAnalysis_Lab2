@@ -191,6 +191,11 @@ class MainWindow(QWidget):
        #     print(e)
         print(params)
 
+        print('Start_solving')
+
+        from additive_model import get_results
+        print(get_results(params))
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
