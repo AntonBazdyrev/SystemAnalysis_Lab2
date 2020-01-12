@@ -1,4 +1,5 @@
 from numpy import linalg
+import numpy as np
 
 
 class InconsistentSystemSolver:

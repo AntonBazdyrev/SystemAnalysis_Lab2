@@ -2,6 +2,7 @@ import numpy as np
 from copy import deepcopy
 from sklearn.preprocessing import MinMaxScaler
 from inconsistent_system_solver import InconsistentSystemSolver
+
 from numpy.polynomial import Polynomial as pm
 
 def basis_sh_chebyshev(degree):
@@ -232,4 +233,4 @@ def get_results(params):
     logs = add_solver.get_logs()
     final_res = add_solver.get_final_results(params['X'], params['y'])
     final_res['logs'] = logs
-    return logs
+    return final_res

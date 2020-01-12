@@ -11,6 +11,8 @@ from PyQt5.QtCore import pyqtSlot, pyqtSignal
 import numpy as np
 import pandas as pd
 
+from additive_model import get_results
+
 
 def connect(obj, func):
     if isinstance(obj, QSpinBox):
@@ -158,13 +160,13 @@ class MainWindow(QWidget):
 
     def get_data(self):
         x1, x2, x3, y = None, None, None, None
-        x1_end = self.__x1_dim.value() - 1
+        x1_end = self.__x1_dim.value()
         x2_end = x1_end + self.__x2_dim.value()
         x3_end = x2_end + self.__x3_dim.value()
         y_end = x3_end + self.__y_dim.value()
         #try:
         data = pd.read_csv(self.__inpuut_file.text())
-        x1 = np.array(data.iloc[:, x1_end])
+        x1 = np.array(data.iloc[:, :x1_end])
         x2 = np.array(data.iloc[:, x1_end:x2_end])
         x3 = np.array(data.iloc[:, x2_end:x3_end])
         y = np.array(data.iloc[:, x3_end:y_end])
@@ -194,8 +196,8 @@ class MainWindow(QWidget):
         print('Start_solving')
 
         from additive_model import get_results
-        print(get_results(params))
-
+        res = get_results(params)
+        print(res.keys())
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
