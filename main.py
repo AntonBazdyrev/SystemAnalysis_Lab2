@@ -1,15 +1,10 @@
-from PyQt5 import QtWidgets, uic
-from pyqtgraph import PlotWidget, plot
-import pyqtgraph as pg
-import sys  # We need sys so that we can pass argv to QApplication
-import os
-
-from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QApplication, QRadioButton, QLabel, QLineEdit, QSpinBox, QCheckBox, QTabWidget, QVBoxLayout, QTextBrowser
-from PyQt5.QtCore import Qt
-from PyQt5.QtCore import pyqtSlot, pyqtSignal
-
+import sys
 import numpy as np
 import pandas as pd
+import pyqtgraph as pg
+
+from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QRadioButton, QLabel, QLineEdit, QSpinBox, QCheckBox, QTabWidget, QApplication, QTextBrowser
+from PyQt5.QtCore import Qt
 
 from additive_model import get_results
 
@@ -137,7 +132,6 @@ class MainWindow(QWidget):
         params['lambda_from_3sys'] = self.__lambda.isChecked()
         return params
 
-
     def __button_press(self):
         self.__calc_button.setEnabled(False)
         try:
@@ -150,14 +144,25 @@ class MainWindow(QWidget):
             size = res['Y'].shape[0]
             for i in range(self.__y_dim.value()):
                 graph = pg.PlotWidget()
-                graph.plot(range(size), res['Y'][:, i])
+                graph.plot(range(size), res['Y'][:, i], pen=pg.mkPen(color=(0, 255, 0)))
                 graph.plot(range(size), res['Y_preds'][:, i], pen=pg.mkPen(color=(255, 0, 0)))
                 self.graphics_tabs.addTab(graph, "Y"+str(i))
 
             for i in range(self.__y_dim.value()):
                 graph = pg.PlotWidget()
-                graph.plot(range(size), np.abs(res['Y_err'][:, i]))
+                graph.plot(range(size), np.abs(res['Y_err'][:, i]), pen=pg.mkPen(color=(255, 0, 0)))
                 self.graphics_tabs.addTab(graph, "Y" + str(i) + '_error')
+
+            for i in range(self.__y_dim.value()):
+                graph = pg.PlotWidget()
+                graph.plot(range(size), res['Y_scaled'][:, i], pen=pg.mkPen(color=(0, 255, 0)))
+                graph.plot(range(size), res['Y_preds_scaled'][:, i], pen=pg.mkPen(color=(255, 0, 0)))
+                self.graphics_tabs.addTab(graph, "Y"+str(i)+'_scaled')
+
+            for i in range(self.__y_dim.value()):
+                graph = pg.PlotWidget()
+                graph.plot(range(size), np.abs(res['Y_err_scaled'][:, i]), pen=pg.mkPen(color=(255, 0, 0)))
+                self.graphics_tabs.addTab(graph, "Y" + str(i) + '_error_scaled')
 
         except Exception as e:
              print(e)
@@ -165,7 +170,7 @@ class MainWindow(QWidget):
 
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     main = MainWindow()
     main.show()
     sys.exit(app.exec_())
