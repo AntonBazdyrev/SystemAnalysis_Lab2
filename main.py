@@ -45,14 +45,12 @@ class MainWindow(QWidget):
         self.__x2_degree = QSpinBox(value=2)
         self.__x3_degree = QSpinBox(value=2)
 
-        self.__calc_button = QPushButton('Calculate Results', self)
+        self.__calc_button = QPushButton('Calculate Results')
         self.__calc_button.clicked.connect(self.__button_press)
 
         self.text_output = QTextBrowser()
 
-        self.graphic_x1 = pg.PlotWidget()
-        self.graphic_x2 = pg.PlotWidget()
-        self.graphic_x3 = pg.PlotWidget()
+        self.graphics_tabs = QTabWidget()
 
         self.__initUI__()
 
@@ -61,14 +59,14 @@ class MainWindow(QWidget):
         input_grid.setVerticalSpacing(5)
         input_grid.addWidget(QLabel('Input file'), 0, 0)
         input_grid.addWidget(QLabel('Output file'), 1, 0)
-        input_grid.addWidget(QLabel('Sample size'), 2, 0)
+        #input_grid.addWidget(QLabel('Sample size'), 2, 0)
         input_grid.addWidget(QLabel('X1 dim'), 3, 0)
         input_grid.addWidget(QLabel('X2 dim'), 4, 0)
         input_grid.addWidget(QLabel('X3 dim'), 5, 0)
         input_grid.addWidget(QLabel('Y dim'), 6, 0)
         input_grid.addWidget(self.__inpuut_file, 0, 1)
         input_grid.addWidget(self.__output_file, 1, 1)
-        input_grid.addWidget(self.__sample_size, 2, 1)
+        #input_grid.addWidget(self.__sample_size, 2, 1)
         input_grid.addWidget(self.__x1_dim, 3, 1)
         input_grid.addWidget(self.__x2_dim, 4, 1)
         input_grid.addWidget(self.__x3_dim, 5, 1)
@@ -98,34 +96,30 @@ class MainWindow(QWidget):
         menu_layout.addLayout(polynomes_grid, 1, 1)
         menu_layout.addLayout(degree_grid_layout, 1, 2)
 
-        self.graphics_tabs = QTabWidget()
         self.graphics_tabs.addTab(pg.PlotWidget(), "Result")
+        self.__calc_button.setMaximumWidth(200)
 
         main_layout = QGridLayout()
-        main_layout.setVerticalSpacing(50)
+        #main_layout.setVerticalSpacing(50)
         main_layout.addLayout(menu_layout, 0, 0, 1, -1)
 
-        main_layout.addWidget(self.graphics_tabs, 1, 0)
-        main_layout.addWidget(self.text_output, 1, 1)
-        main_layout.addWidget(self.__calc_button, 1, 2)
+        main_layout.addWidget(self.graphics_tabs, 2, 0)
+        main_layout.addWidget(self.text_output, 2, 1)
+        main_layout.addWidget(self.__calc_button, 1, 1, alignment=Qt.AlignRight)
 
         self.setLayout(main_layout)
 
-
     def get_data(self):
-        #x1, x2, x3, y = None, None, None, None
         x1_end = self.__x1_dim.value()
         x2_end = x1_end + self.__x2_dim.value()
         x3_end = x2_end + self.__x3_dim.value()
         y_end = x3_end + self.__y_dim.value()
-        try:
-            data = pd.read_csv(self.__inpuut_file.text())
-            x1 = np.array(data.iloc[:, :x1_end])
-            x2 = np.array(data.iloc[:, x1_end:x2_end])
-            x3 = np.array(data.iloc[:, x2_end:x3_end])
-            y = np.array(data.iloc[:, x3_end:y_end])
-        except:
-            raise Exception('Invalid input info')
+
+        data = pd.read_csv(self.__inpuut_file.text())
+        x1 = np.array(data.iloc[:, :x1_end])
+        x2 = np.array(data.iloc[:, x1_end:x2_end])
+        x3 = np.array(data.iloc[:, x2_end:x3_end])
+        y = np.array(data.iloc[:, x3_end:y_end])
         return [x1, x2, x3], y
 
     def get_method(self):
@@ -133,38 +127,41 @@ class MainWindow(QWidget):
         for el in [self.__chebyshev, self.__legendre, self.__hermit, self.__laguerre]:
             if el.isChecked():
                 method = el.text()
-                break
         return method
 
-    def __button_press(self):
+    def get_params(self):
         params = {}
+        params['X'], params['y'] = self.get_data()
+        params['method'] = self.get_method()
+        params['X_degree'] = [self.__x1_degree.value(), self.__x2_degree.value(), self.__x3_degree.value()]
+        params['lambda_from_3sys'] = self.__lambda.isChecked()
+        return params
+
+
+    def __button_press(self):
+        self.__calc_button.setEnabled(False)
         try:
-            params['X'], params['y'] = self.get_data()
-            params['method'] = self.get_method()
-            params['X_degree'] = [self.__x1_degree.value(), self.__x2_degree.value(), self.__x3_degree.value()]
-            params['lambda_from_3sys'] = self.__lambda.isChecked()
-
-
+            params = self.get_params()
             res = get_results(params)
-            size = res['Y'].shape[0]
-            self.graphic_x1.clear()
-            self.graphic_x1.plot(range(size), res['Y'][:, 0])
-            self.graphic_x1.plot(range(size), res['Y_preds'][:, 0])
 
+            self.text_output.setText(res['logs'])
+            self.graphics_tabs.clear()
+
+            size = res['Y'].shape[0]
             for i in range(self.__y_dim.value()):
                 graph = pg.PlotWidget()
                 graph.plot(range(size), res['Y'][:, i])
-                graph.plot(range(size), res['Y_preds'][:, i])
+                graph.plot(range(size), res['Y_preds'][:, i], pen=pg.mkPen(color=(255, 0, 0)))
                 self.graphics_tabs.addTab(graph, "Y"+str(i))
 
+            for i in range(self.__y_dim.value()):
                 graph = pg.PlotWidget()
                 graph.plot(range(size), np.abs(res['Y_err'][:, i]))
                 self.graphics_tabs.addTab(graph, "Y" + str(i) + '_error')
 
-            self.text_output.setText(res['logs'])
-
         except Exception as e:
              print(e)
+        self.__calc_button.setEnabled(True)
 
 
 if __name__ == '__main__':
