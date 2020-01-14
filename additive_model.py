@@ -12,6 +12,30 @@ def basis_sh_chebyshev(degree):
     del basis[0]
     return basis
 
+def basis_sh_legendre(degree):
+    basis = [pm([1])]
+    for i in range(degree):
+        if i == 0:
+            basis.append(pm([-1, 2]))
+            continue
+        basis.append((pm([-2*i - 1, 4*i + 2])*basis[-1] - i * basis[-2]) / (i + 1))
+    return basis
+
+def basis_laguerre(degree):
+    basis = [pm([1])]
+    for i in range(degree):
+        if i == 0:
+            basis.append(pm([1, -1]))
+            continue
+        basis.append(pm([2*i + 1, -1])*basis[-1] - i * i * basis[-2])
+    return basis
+
+def basis_hermite(degree):
+    basis = [pm([0]), pm([1])]
+    for i in range(degree):
+        basis.append(pm([0,2])*basis[-1] - 2 * i * basis[-2])
+    del basis[0]
+    return basis
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -30,6 +54,17 @@ class AdditiveModelSystem:
         self.calculate_separately = calculate_separately
         self.polynomes_type = polynomes_type
         self.degrees = degrees
+
+        if polynomes_type == 'Legendre':
+            self.basis_gen_function = basis_sh_legendre
+        elif polynomes_type == 'Hermit':
+            self.basis_gen_function = basis_hermite
+        elif polynomes_type == 'Laguerre':
+            self.basis_gen_function = basis_laguerre
+        else:
+            self.basis_gen_function = basis_sh_chebyshev
+
+        print(self.basis_gen_function)
 
     def _parse_vectors(self, vectors, name='X'):
         return {f'{name}{i + 1}': vec for i, vec in enumerate(vectors)}
@@ -90,7 +125,7 @@ class AdditiveModelSystem:
     def fit(self, X, Y):
         calculate_separately = self.calculate_separately
         degrees = self.degrees
-        self.basises = [basis_sh_chebyshev(d) for d in degrees]
+        self.basises = [self.basis_gen_function(d) for d in degrees]
         X, Y = self._normalize(X, Y)
         Y = Y.T
         for i in range(len(Y)):
@@ -106,17 +141,23 @@ class AdditiveModelSystem:
                 for k in range(X[j].shape[1]):
                     self.lambda_values[i][j][k] = {}
 
-        self._lambda_solver(X, Y, calculate_separately=calculate_separately)
-        self._alpha_solver(X, Y)
-        self._c_solver(X, Y)
+        for value in self._lambda_solver(X, Y, calculate_separately=calculate_separately):
+            yield 30*value
+        for value in self._alpha_solver(X, Y):
+            yield 20*value + 30
+        for value in self._c_solver(X, Y):
+            yield 20*value + 50
 
     def _lambda_solver(self, X, bqi, calculate_separately=True):
         X, bqi = self._parse_vectors(X, name='X'), self._parse_vectors(bqi, name='bqi')
 
+        pr_bar_ind = 0
         if calculate_separately:
             for x_ind, (basis, (x_name, x)) in enumerate(zip(self.basises, X.items())):
                 print(x_name)
                 for y_ind, (bqi_name, b) in enumerate(bqi.items()):
+                    pr_bar_ind += 1
+                    yield pr_bar_ind / (len(X.items()) * len(bqi.items()))
                     print(bqi_name)
                     x_poly = np.hstack([poly(x) for poly in basis])
                     results = self.system_solver.solve(x_poly, b)
@@ -129,6 +170,7 @@ class AdditiveModelSystem:
                     print(results)
         else:
             print('else')
+            pr_bar_ind = 0
             for y_ind, (bqi_name, b) in enumerate(bqi.items()):
                 print(bqi_name)
                 x_dims = [x.shape[1] * len(basis) for basis, (k, x) in zip(self.basises, X.items())]
@@ -140,6 +182,8 @@ class AdditiveModelSystem:
 
                 curr_x_ind = 0
                 for x_ind, x_dim in enumerate(x_dims):
+                    pr_bar_ind += 1
+                    yield pr_bar_ind/(len(x_dims)*len(bqi.items()))
                     res_curr = results[curr_x_ind: curr_x_ind + x_dim]
                     # print(res_curr)
                     for poly_degree, res in enumerate(chunks(res_curr, list(X.items())[x_ind][1].shape[1])):
@@ -154,6 +198,7 @@ class AdditiveModelSystem:
 
     def _alpha_solver(self, X, bqi):
         X, bqi = self._parse_vectors(X, name='X'), self._parse_vectors(bqi, name='bqi')
+        pr_bar_ind = 0
         for y_ind, (bqi_name, b) in enumerate(bqi.items()):
             x_dims = [x.shape[1] for k, x in X.items()]
             merged_x = np.hstack([self._poly_transform(x, x_ind, y_ind) for x_ind, (k, x) in enumerate(X.items())])
@@ -163,6 +208,8 @@ class AdditiveModelSystem:
 
             curr_x_ind = 0
             for x_ind, x_dim in enumerate(x_dims):
+                pr_bar_ind += 1
+                yield pr_bar_ind / (len(x_dims) * len(bqi.items()))
                 res_current = results[curr_x_ind: curr_x_ind + x_dim]
 
                 for x_ind_coord, alpha in enumerate(res_current):
@@ -175,10 +222,13 @@ class AdditiveModelSystem:
     def _c_solver(self, X, Y):
         X, Y = self._parse_vectors(X, name='X'), self._parse_vectors(Y, name='Y')
 
+        pr_bar_ind = 0
         for y_ind, (bqi_name, y) in enumerate(Y.items()):
             X_merged = np.array([self._F_transform(x, x_ind, y_ind) for x_ind, (k, x) in enumerate(X.items())]).T
             results = self.system_solver.solve(X_merged, y)
             for x_ind, c in enumerate(results):
+                pr_bar_ind += 1
+                yield pr_bar_ind / (len(results) * len(Y.items()))
                 self.c_values[y_ind][x_ind] = c
 
     def get_logs(self):
@@ -229,8 +279,11 @@ class AdditiveModelSystem:
 
 def get_results(params):
     add_solver = AdditiveModelSystem(polynomes_type=params['method'], calculate_separately=params['lambda_from_3sys'], degrees=params['X_degree'])
-    add_solver.fit(params['X'], params['y'])
+    for v in add_solver.fit(params['X'], params['y']):
+        yield v
     logs = add_solver.get_logs()
+    yield 90
     final_res = add_solver.get_final_results(params['X'], params['y'])
     final_res['logs'] = logs
-    return final_res
+    yield 100
+    yield final_res

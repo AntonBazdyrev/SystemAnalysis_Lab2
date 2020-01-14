@@ -2,9 +2,13 @@ import sys
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
+import sys
+import qdarkstyle
 
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QRadioButton, QLabel, QLineEdit, QSpinBox, QCheckBox, QTabWidget, QApplication, QTextBrowser
 from PyQt5.QtCore import Qt
+from PyQt5 import QtGui
+
 
 from additive_model import get_results
 
@@ -47,7 +51,11 @@ class MainWindow(QWidget):
 
         self.graphics_tabs = QTabWidget()
 
+        self.progress = QtGui.QProgressBar(self)
+
         self.__initUI__()
+
+
 
     def __initUI__(self):
         input_grid = QGridLayout()
@@ -91,15 +99,17 @@ class MainWindow(QWidget):
         menu_layout.addLayout(polynomes_grid, 1, 1)
         menu_layout.addLayout(degree_grid_layout, 1, 2)
 
+
         self.graphics_tabs.addTab(pg.PlotWidget(), "Result")
-        self.__calc_button.setMaximumWidth(200)
+        self.__calc_button.setMaximumWidth(300)
 
         main_layout = QGridLayout()
-        #main_layout.setVerticalSpacing(50)
+        main_layout.setVerticalSpacing(20)
         main_layout.addLayout(menu_layout, 0, 0, 1, -1)
 
         main_layout.addWidget(self.graphics_tabs, 2, 0)
         main_layout.addWidget(self.text_output, 2, 1)
+        main_layout.addWidget(self.progress, 1, 0)
         main_layout.addWidget(self.__calc_button, 1, 1, alignment=Qt.AlignRight)
 
         self.setLayout(main_layout)
@@ -136,7 +146,9 @@ class MainWindow(QWidget):
         self.__calc_button.setEnabled(False)
         try:
             params = self.get_params()
-            res = get_results(params)
+            for res in get_results(params):
+                if not isinstance(res, dict):
+                    self.progress.setValue(res)
 
             self.text_output.setText(res['logs'])
             self.graphics_tabs.clear()
@@ -171,6 +183,7 @@ class MainWindow(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
     main = MainWindow()
     main.show()
     sys.exit(app.exec_())
