@@ -26,7 +26,7 @@ class MainWindow(QWidget):
         super(MainWindow, self).__init__(*args, **kwargs)
 
         self.__inpuut_file = QLineEdit('data/data_var1.csv')
-        self.__output_file = QLineEdit('data/output_own.csv')
+        self.__output_file = QLineEdit('data/output_own.txt')
         self.__sample_size = QSpinBox(value=50)
         self.__x1_dim = QSpinBox(value=2)
         self.__x2_dim = QSpinBox(value=2)
@@ -149,6 +149,9 @@ class MainWindow(QWidget):
             for res in get_results(params):
                 if not isinstance(res, dict):
                     self.progress.setValue(res)
+
+            with open(self.__output_file.text(), 'w') as f:
+                f.write(res['logs'])
 
             self.text_output.setText(res['logs'])
             self.graphics_tabs.clear()
