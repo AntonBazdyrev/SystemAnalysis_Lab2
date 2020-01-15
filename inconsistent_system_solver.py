@@ -49,8 +49,8 @@ class InconsistentSystemSolver:
     def lstsq(self, A, b):
         return linalg.lstsq(A, b)[0]
 
-    def lsqr(self, A, b, alpha=0.1):
-        return lsqr(A, b)[0]
+    def lsqr(self, A, b, alpha=1e-3):
+        return lsqr(A, b, damp=alpha)[0]
 
     def solve(self, A, b):
         if self.method == 'lstsq':
