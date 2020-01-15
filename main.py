@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
 
 
-from additive_model import get_results
+from multiplicative_model import get_results
 
 
 def connect(obj, func):
@@ -44,6 +44,11 @@ class MainWindow(QWidget):
         self.__x2_degree = QSpinBox(value=2)
         self.__x3_degree = QSpinBox(value=2)
 
+        self.__relu = QRadioButton('relu', checked=True)
+        self.__gelu = QRadioButton('gelu')
+        self.__softplus = QRadioButton('softplus')
+        self.__sigmoid = QRadioButton('sigmoid')
+
         self.__calc_button = QPushButton('Calculate Results')
         self.__calc_button.clicked.connect(self.__button_press)
 
@@ -75,7 +80,13 @@ class MainWindow(QWidget):
         input_grid.addWidget(self.__x3_dim, 5, 1)
         input_grid.addWidget(self.__y_dim, 6, 1)
 
+
         polynomes_grid = QGridLayout()
+        poly_group = QtGui.QButtonGroup(polynomes_grid)  # poly group
+        poly_group.addButton(self.__chebyshev)
+        poly_group.addButton(self.__legendre)
+        poly_group.addButton(self.__laguerre)
+        poly_group.addButton(self.__hermit)
         polynomes_grid.addWidget(self.__chebyshev, 0, 0)
         polynomes_grid.addWidget(self.__legendre, 1, 0)
         polynomes_grid.addWidget(self.__hermit, 2, 0)
@@ -90,14 +101,29 @@ class MainWindow(QWidget):
         degree_grid_layout.addWidget(self.__x2_degree, 1, 1)
         degree_grid_layout.addWidget(self.__x3_degree, 2, 1)
 
+        activation_layout = QGridLayout()
+        activation_group = QtGui.QButtonGroup(activation_layout)  # activation group
+        activation_group.addButton(self.__relu)
+        activation_group.addButton(self.__gelu)
+        activation_group.addButton(self.__softplus)
+        activation_group.addButton(self.__sigmoid)
+        activation_layout.addWidget(self.__relu, 0, 0)
+        activation_layout.addWidget(self.__gelu, 1, 0)
+        activation_layout.addWidget(self.__softplus, 2, 0)
+        activation_layout.addWidget(self.__sigmoid, 3, 0)
+
         menu_layout = QGridLayout()
         menu_layout.setHorizontalSpacing(50)
         menu_layout.addWidget(QLabel('Input', alignment=Qt.AlignCenter), 0, 0)
         menu_layout.addWidget(QLabel('Method', alignment=Qt.AlignCenter), 0, 1)
         menu_layout.addWidget(QLabel('Degree', alignment=Qt.AlignCenter), 0, 2)
+        menu_layout.addWidget(QLabel('Activation', alignment=Qt.AlignCenter), 0, 3)
         menu_layout.addLayout(input_grid, 1, 0)
         menu_layout.addLayout(polynomes_grid, 1, 1)
         menu_layout.addLayout(degree_grid_layout, 1, 2)
+        menu_layout.addLayout(activation_layout, 1, 3)
+
+
 
 
         self.graphics_tabs.addTab(pg.PlotWidget(), "Result")
@@ -134,12 +160,20 @@ class MainWindow(QWidget):
                 method = el.text()
         return method
 
+    def get_activation(self):
+        method = ''
+        for el in [self.__relu, self.__gelu, self.__softplus, self.__sigmoid]:
+            if el.isChecked():
+                method = el.text()
+        return method
+
     def get_params(self):
         params = {}
         params['X'], params['y'] = self.get_data()
         params['method'] = self.get_method()
         params['X_degree'] = [self.__x1_degree.value(), self.__x2_degree.value(), self.__x3_degree.value()]
         params['lambda_from_3sys'] = self.__lambda.isChecked()
+        params['activation'] = self.get_activation()
         return params
 
     def __button_press(self):
