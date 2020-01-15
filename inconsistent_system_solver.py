@@ -1,10 +1,13 @@
 from numpy import linalg
 import numpy as np
 
+from numpy import linalg
+from scipy.sparse.linalg import lsqr
+
 
 class InconsistentSystemSolver:
     def __init__(self, method='conjugate'):
-        self.method = method if method in ['lstsq', 'conjugate'] else 'conjugate'
+        self.method = method if method in ['lstsq', 'conjugate', 'lsqr'] else 'conjugate'
 
     def conjugate_grad(self, A, b, x=None, eps=1e-5):
         """
@@ -46,5 +49,13 @@ class InconsistentSystemSolver:
     def lstsq(self, A, b):
         return linalg.lstsq(A, b)[0]
 
+    def lsqr(self, A, b, alpha=0.1):
+        return lsqr(A, b)[0]
+
     def solve(self, A, b):
-        return self.lstsq(A, b) if self.method == 'lstsq' else self.nonlinear_conjugate_grad(A, b)
+        if self.method == 'lstsq':
+            return self.lstsq(A, b)
+        elif self.method == 'lsqr':
+            return self.lsqr(A, b)
+        else:
+            return self.nonlinear_conjugate_grad(A, b)
