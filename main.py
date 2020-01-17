@@ -8,6 +8,7 @@ import qdarkstyle
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QRadioButton, QLabel, QLineEdit, QSpinBox, QCheckBox, QTabWidget, QApplication, QTextBrowser
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
+from PyQt5.QtCore import pyqtSlot, pyqtSignal
 
 
 from multiplicative_model import get_results
@@ -59,7 +60,6 @@ class MainWindow(QWidget):
         self.progress = QtGui.QProgressBar(self)
 
         self.__initUI__()
-
 
 
     def __initUI__(self):
@@ -176,6 +176,7 @@ class MainWindow(QWidget):
         params['activation'] = self.get_activation()
         return params
 
+    @pyqtSlot()
     def __button_press(self):
         self.__calc_button.setEnabled(False)
         try:
@@ -183,6 +184,7 @@ class MainWindow(QWidget):
             for res in get_results(params):
                 if not isinstance(res, dict):
                     self.progress.setValue(res)
+                QApplication.processEvents()
 
             with open(self.__output_file.text(), 'w') as f:
                 f.write(res['logs'])
