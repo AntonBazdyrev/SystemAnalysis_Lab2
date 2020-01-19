@@ -1,4 +1,3 @@
-import sys
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
@@ -8,7 +7,7 @@ import qdarkstyle
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QRadioButton, QLabel, QLineEdit, QSpinBox, QCheckBox, QTabWidget, QApplication, QTextBrowser
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
-from PyQt5.QtCore import pyqtSlot, pyqtSignal
+from PyQt5.QtCore import pyqtSlot
 
 
 from multiplicative_model import get_results
@@ -60,7 +59,6 @@ class MainWindow(QWidget):
         self.progress = QtGui.QProgressBar(self)
 
         self.__initUI__()
-
 
     def __initUI__(self):
         input_grid = QGridLayout()
@@ -176,6 +174,27 @@ class MainWindow(QWidget):
         params['activation'] = self.get_activation()
         return params
 
+    @staticmethod
+    def plot_graphs(plot_data, plot_widgets):
+        size = len(plot_data['Y'][0][0])
+        dim = len(plot_widgets['Y'])
+        red_pen = pg.mkPen(color=(0, 255, 0))
+        green_pen = pg.mkPen(color=(255, 0, 0))
+
+        for i in range(dim):
+            plot_widgets['Y'][i].plot(range(size), plot_data['Y'][i][0], pen=green_pen)
+            plot_widgets['Y'][i].plot(range(size), plot_data['Y'][i][1], pen=red_pen)
+
+        for i in range(dim):
+            plot_widgets['Y_error'][i].plot(range(size), plot_data['Y_error'][i], pen=red_pen)
+
+        for i in range(dim):
+            plot_widgets['Y_scaled'][i].plot(range(size), plot_data['Y_scaled'][i][0], pen=green_pen)
+            plot_widgets['Y_scaled'][i].plot(range(size), plot_data['Y_scaled'][i][1], pen=red_pen)
+
+        for i in range(dim):
+            plot_widgets['Y_error_scaled'][i].plot(range(size), plot_data['Y_error_scaled'][i], pen=red_pen)
+
     @pyqtSlot()
     def __button_press(self):
         self.__calc_button.setEnabled(False)
@@ -190,30 +209,41 @@ class MainWindow(QWidget):
                 f.write(res['logs'])
 
             self.text_output.setText(res['logs'])
-            self.graphics_tabs.clear()
 
             size = res['Y'].shape[0]
-            for i in range(self.__y_dim.value()):
-                graph = pg.PlotWidget()
-                graph.plot(range(size), res['Y'][:, i], pen=pg.mkPen(color=(0, 255, 0)))
-                graph.plot(range(size), res['Y_preds'][:, i], pen=pg.mkPen(color=(255, 0, 0)))
-                self.graphics_tabs.addTab(graph, "Y"+str(i))
+            dim = res['Y'].shape[1]
 
-            for i in range(self.__y_dim.value()):
-                graph = pg.PlotWidget()
-                graph.plot(range(size), np.abs(res['Y_err'][:, i]), pen=pg.mkPen(color=(255, 0, 0)))
-                self.graphics_tabs.addTab(graph, "Y" + str(i) + '_error')
+            plot_data = {'Y': [[[], []] for _ in range(dim)],
+                         'Y_error': [[] for _ in range(dim)],
+                         'Y_scaled': [[[], []] for _ in range(dim)],
+                         'Y_error_scaled': [[] for _ in range(dim)]}
+            plot_widgets = {'Y': [pg.PlotWidget() for _ in range(dim)],
+                            'Y_error': [pg.PlotWidget() for _ in range(dim)],
+                            'Y_scaled': [pg.PlotWidget() for _ in range(dim)],
+                            'Y_error_scaled': [pg.PlotWidget() for _ in range(dim)]}
 
-            for i in range(self.__y_dim.value()):
-                graph = pg.PlotWidget()
-                graph.plot(range(size), res['Y_scaled'][:, i], pen=pg.mkPen(color=(0, 255, 0)))
-                graph.plot(range(size), res['Y_preds_scaled'][:, i], pen=pg.mkPen(color=(255, 0, 0)))
-                self.graphics_tabs.addTab(graph, "Y"+str(i)+'_scaled')
+            self.graphics_tabs.clear()
+            for name, val in plot_widgets.items():
+                for i, widget in enumerate(val):
+                    self.graphics_tabs.addTab(widget, f'{name}{i}')
+            QApplication.processEvents()
 
-            for i in range(self.__y_dim.value()):
-                graph = pg.PlotWidget()
-                graph.plot(range(size), np.abs(res['Y_err_scaled'][:, i]), pen=pg.mkPen(color=(255, 0, 0)))
-                self.graphics_tabs.addTab(graph, "Y" + str(i) + '_error_scaled')
+            import time
+            for idx in range(size):
+                for i in range(dim):
+                    plot_data['Y'][i][0].append(res['Y'][idx][i])
+                    plot_data['Y'][i][1].append(res['Y_preds'][idx][i])
+
+                    plot_data['Y_scaled'][i][0].append(res['Y_scaled'][idx][i])
+                    plot_data['Y_scaled'][i][1].append(res['Y_preds_scaled'][idx][i])
+
+                    plot_data['Y_error'][i].append(res['Y_err'][idx][i])
+
+                    plot_data['Y_error_scaled'][i].append(res['Y_err_scaled'][idx][i])
+
+                self.plot_graphs(plot_data, plot_widgets)
+                QApplication.processEvents()
+                time.sleep(0.1)
 
         except Exception as e:
              print(e)
