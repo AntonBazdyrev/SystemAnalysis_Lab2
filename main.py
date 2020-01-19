@@ -175,25 +175,17 @@ class MainWindow(QWidget):
         return params
 
     @staticmethod
-    def plot_graphs(plot_data, plot_widgets):
-        size = len(plot_data['Y'][0][0])
-        dim = len(plot_widgets['Y'])
-        red_pen = pg.mkPen(color=(255, 0, 0))
-        green_pen = pg.mkPen(color=(0, 255, 0))
+    def plot_graphs(plot_data, plot_widgets, plot_pens):
+        data_dim = len(plot_widgets['Y'])
+        pens = [pg.mkPen(color=(255, 0, 0)), pg.mkPen(color=(0, 255, 0)),
+                pg.mkPen(color=(0, 0, 255)), pg.mkPen(color=(255, 255, 255))]
 
-        for i in range(dim):
-            plot_widgets['Y'][i].plot(range(size), plot_data['Y'][i][0], pen=green_pen)
-            plot_widgets['Y'][i].plot(range(size), plot_data['Y'][i][1], pen=red_pen)
-
-        for i in range(dim):
-            plot_widgets['Y_error'][i].plot(range(size), plot_data['Y_error'][i], pen=red_pen)
-
-        for i in range(dim):
-            plot_widgets['Y_scaled'][i].plot(range(size), plot_data['Y_scaled'][i][0], pen=green_pen)
-            plot_widgets['Y_scaled'][i].plot(range(size), plot_data['Y_scaled'][i][1], pen=red_pen)
-
-        for i in range(dim):
-            plot_widgets['Y_error_scaled'][i].plot(range(size), plot_data['Y_error_scaled'][i], pen=red_pen)
+        for widget_name, widget_data in plot_data.items():
+            for dim in range(data_dim):
+                for line_name, line_data in widget_data.items():
+                    plot_widgets[widget_name][dim].plot(range(len(line_data[dim])),
+                                                        line_data[dim],
+                                                        pen=plot_pens[widget_name][line_name])
 
     @pyqtSlot()
     def __button_press(self):
@@ -213,14 +205,24 @@ class MainWindow(QWidget):
             size = res['Y'].shape[0]
             dim = res['Y'].shape[1]
 
-            plot_data = {'Y': [[[], []] for _ in range(dim)],
-                         'Y_error': [[] for _ in range(dim)],
-                         'Y_scaled': [[[], []] for _ in range(dim)],
-                         'Y_error_scaled': [[] for _ in range(dim)]}
+            plot_data = {'Y': {'y': [[] for _ in range(dim)], 'pred': [[] for _ in range(dim)]},
+                         'Y_error': {'error': [[] for _ in range(dim)]},
+                         'Y_scaled': {'y': [[] for _ in range(dim)], 'pred': [[] for _ in range(dim)]},
+                         'Y_error_scaled': {'error': [[] for _ in range(dim)]}
+                         }
             plot_widgets = {'Y': [pg.PlotWidget() for _ in range(dim)],
                             'Y_error': [pg.PlotWidget() for _ in range(dim)],
                             'Y_scaled': [pg.PlotWidget() for _ in range(dim)],
                             'Y_error_scaled': [pg.PlotWidget() for _ in range(dim)]}
+            p1 = pg.mkPen(color=(255, 0, 0))
+            p2 = pg.mkPen(color=(0, 255, 0))
+            p3 = pg.mkPen(color=(0, 0, 255))
+            p4 = pg.mkPen(color=(255, 255, 255))
+            plot_pens = {'Y': {'y': p1, 'pred': p2},
+                         'Y_error': {'error': p4},
+                         'Y_scaled': {'y': p1, 'pred': p2},
+                         'Y_error_scaled': {'error': p4}
+                         }
 
             self.graphics_tabs.clear()
             for name, val in plot_widgets.items():
@@ -231,17 +233,17 @@ class MainWindow(QWidget):
             import time
             for idx in range(size):
                 for i in range(dim):
-                    plot_data['Y'][i][0].append(res['Y'][idx][i])
-                    plot_data['Y'][i][1].append(res['Y_preds'][idx][i])
+                    plot_data['Y']['y'][i].append(res['Y'][idx][i])
+                    plot_data['Y']['pred'][i].append(res['Y_preds'][idx][i])
 
-                    plot_data['Y_scaled'][i][0].append(res['Y_scaled'][idx][i])
-                    plot_data['Y_scaled'][i][1].append(res['Y_preds_scaled'][idx][i])
+                    plot_data['Y_scaled']['y'][i].append(res['Y_scaled'][idx][i])
+                    plot_data['Y_scaled']['pred'][i].append(res['Y_preds_scaled'][idx][i])
 
-                    plot_data['Y_error'][i].append(res['Y_err'][idx][i])
+                    plot_data['Y_error']['error'][i].append(res['Y_err'][idx][i])
 
-                    plot_data['Y_error_scaled'][i].append(res['Y_err_scaled'][idx][i])
+                    plot_data['Y_error_scaled']['error'][i].append(res['Y_err_scaled'][idx][i])
 
-                self.plot_graphs(plot_data, plot_widgets)
+                self.plot_graphs(plot_data, plot_widgets, plot_pens)
                 QApplication.processEvents()
                 time.sleep(0.1)
 
