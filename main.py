@@ -178,8 +178,8 @@ class MainWindow(QWidget):
     def plot_graphs(plot_data, plot_widgets):
         size = len(plot_data['Y'][0][0])
         dim = len(plot_widgets['Y'])
-        red_pen = pg.mkPen(color=(0, 255, 0))
-        green_pen = pg.mkPen(color=(255, 0, 0))
+        red_pen = pg.mkPen(color=(255, 0, 0))
+        green_pen = pg.mkPen(color=(0, 255, 0))
 
         for i in range(dim):
             plot_widgets['Y'][i].plot(range(size), plot_data['Y'][i][0], pen=green_pen)
