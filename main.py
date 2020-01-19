@@ -3,6 +3,7 @@ import pandas as pd
 import pyqtgraph as pg
 import sys
 import qdarkstyle
+import time
 
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QRadioButton, QLabel, QLineEdit, QSpinBox, QCheckBox, QTabWidget, QApplication, QTextBrowser
 from PyQt5.QtCore import Qt
@@ -10,8 +11,8 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSlot
 
 
-from multiplicative_model import get_results
-
+#from multiplicative_model import get_results
+from risk_analysis_model import get_risks_results
 
 def connect(obj, func):
     if isinstance(obj, QSpinBox):
@@ -177,9 +178,6 @@ class MainWindow(QWidget):
     @staticmethod
     def plot_graphs(plot_data, plot_widgets, plot_pens):
         data_dim = len(plot_widgets['Y'])
-        pens = [pg.mkPen(color=(255, 0, 0)), pg.mkPen(color=(0, 255, 0)),
-                pg.mkPen(color=(0, 0, 255)), pg.mkPen(color=(255, 255, 255))]
-
         for widget_name, widget_data in plot_data.items():
             for dim in range(data_dim):
                 for line_name, line_data in widget_data.items():
@@ -192,19 +190,9 @@ class MainWindow(QWidget):
         self.__calc_button.setEnabled(False)
         try:
             params = self.get_params()
-            for res in get_results(params):
-                if not isinstance(res, dict):
-                    self.progress.setValue(res)
-                QApplication.processEvents()
 
-            with open(self.__output_file.text(), 'w') as f:
-                f.write(res['logs'])
-
-            self.text_output.setText(res['logs'])
-
-            size = res['Y'].shape[0]
-            dim = res['Y'].shape[1]
-
+            size = params['y'].shape[0]
+            dim = params['y'].shape[1]
             plot_data = {'Y': {'y': [[] for _ in range(dim)], 'pred': [[] for _ in range(dim)]},
                          'Y_error': {'error': [[] for _ in range(dim)]},
                          'Y_scaled': {'y': [[] for _ in range(dim)], 'pred': [[] for _ in range(dim)]},
@@ -230,22 +218,29 @@ class MainWindow(QWidget):
                     self.graphics_tabs.addTab(widget, f'{name}{i}')
             QApplication.processEvents()
 
-            import time
-            for idx in range(size):
+            for res in get_risks_results(params):
                 for i in range(dim):
-                    plot_data['Y']['y'][i].append(res['Y'][idx][i])
-                    plot_data['Y']['pred'][i].append(res['Y_preds'][idx][i])
+                    plot_data['Y']['y'][i] = res['Y'][:, i]
+                    plot_data['Y']['pred'][i] = res['Y_preds'][:, i]
 
-                    plot_data['Y_scaled']['y'][i].append(res['Y_scaled'][idx][i])
-                    plot_data['Y_scaled']['pred'][i].append(res['Y_preds_scaled'][idx][i])
+                    plot_data['Y_scaled']['y'][i] = res['Y_scaled'][:, i]
+                    plot_data['Y_scaled']['pred'][i] = res['Y_preds_scaled'][:, i]
 
-                    plot_data['Y_error']['error'][i].append(res['Y_err'][idx][i])
+                    plot_data['Y_error']['error'][i] = res['Y_err'][:, i]
 
-                    plot_data['Y_error_scaled']['error'][i].append(res['Y_err_scaled'][idx][i])
+                    plot_data['Y_error_scaled']['error'][i] = res['Y_err_scaled'][:, i]
 
                 self.plot_graphs(plot_data, plot_widgets, plot_pens)
                 QApplication.processEvents()
                 time.sleep(0.1)
+
+            self.text_output.setText(res['logs'])
+
+            with open(self.__output_file.text(), 'w') as f:
+                f.write(res['logs'])
+
+
+
 
         except Exception as e:
              print(e)
