@@ -69,6 +69,8 @@ class MainWindow(QWidget):
 
         self.__initUI__()
 
+        self.__stop_calc = False
+
     def __initUI__(self):
         input_grid = QGridLayout()
         input_grid.setVerticalSpacing(5)
@@ -226,7 +228,12 @@ class MainWindow(QWidget):
 
     @pyqtSlot()
     def __button_press(self):
-        self.__calc_button.setEnabled(False)
+        if self.__calc_button.text() == 'Stop':
+            self.__stop_calc = True
+            return
+
+        self.__stop_calc = False
+        self.__calc_button.setText('Stop')
         try:
             params = self.get_params()
 
@@ -272,19 +279,18 @@ class MainWindow(QWidget):
 
                 self.plot_graphs(plot_data, plot_widgets, plot_pens)
                 QApplication.processEvents()
-                #time.sleep(0.1)
+                if self.__stop_calc:
+                    self.__calc_button.setText('Calculate Results')
+                    return
 
             self.text_output.setText(res['logs'])
 
             with open(self.__output_file.text(), 'w') as f:
                 f.write(res['logs'])
 
-
-
-
         except Exception as e:
              print(e)
-        self.__calc_button.setEnabled(True)
+        self.__calc_button.setText('Calculate Results')
 
 
 if __name__ == '__main__':
