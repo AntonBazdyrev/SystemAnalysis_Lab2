@@ -4,6 +4,7 @@ from scipy.stats import norm
 
 from multiplicative_model import MultiplicativeModelSystem
 from additive_model import AdditiveModelSystem
+from arimax import ARIMAX
 
 
 EMERGENCY_VALUES = 'data/emergency_values.csv'
@@ -30,42 +31,78 @@ class RiskAnalysisModel:
         self.predictor = predictor
         self.risk_function = risk_function
 
-    def get_results(self, X, Y, window=20):
+    def get_results(self, X, Y, window=20, window_test=10):
         curr_pos = window
         diffs = []
         risks = []
         y_preds = []
         y_true = []
-        print(Y.shape)
-        for i in range(curr_pos, Y.shape[0]):
-            print(i)
-            X_observed, Y_observed = [x[i - curr_pos: i] for x in X], Y[i - curr_pos: i]
-            self.predictor.fit(X_observed, Y_observed)
-            #print('FIIIT')
-            X_test = [normalizer.transform(x[i: i+1]) for x, normalizer in zip(X, self.predictor.X_normalizers)]
-            Y_test_scaled = self.predictor.Y_normalizer.transform(Y[i: i+1])
-            Y_pred_scaled = self.predictor.predict(X_test)
-            Y_preds = self.predictor.Y_normalizer.inverse_transform(Y_pred_scaled)
-            Y_test = self.predictor.Y_normalizer.inverse_transform(Y_test_scaled)
-            diffs.append((Y_test - Y_preds).flatten())
-            Y_preds, Y_test = Y_preds.flatten(), Y_test.flatten()
-            y_preds.append(Y_preds)
-            y_true.append(Y_test)
-            sigma = np.array(diffs).std(axis=0)
-            r = []
-            for ind, (pred, s) in enumerate(zip(Y_preds, sigma)):
-                r.append(self.risk_function(pred, s, ind))
-                #print('END')
-            risks.append(r)
-            yield np.vstack(y_true), np.vstack(y_preds), np.vstack(risks)
+
+        if window_test == 1:
+            for i in range(curr_pos, Y.shape[0]):
+                X_observed, Y_observed = [x[i - curr_pos: i] for x in X], Y[i - curr_pos: i]
+                self.predictor.fit(X_observed, Y_observed)
+                print('FIIIT')
+                X_test = [normalizer.transform(x[i: i+1]) for x, normalizer in zip(X, self.predictor.X_normalizers)]
+                Y_test_scaled = self.predictor.Y_normalizer.transform(Y[i: i+1])
+                Y_pred_scaled = self.predictor.predict(X_test)
+                Y_preds = self.predictor.Y_normalizer.inverse_transform(Y_pred_scaled)
+                Y_test = self.predictor.Y_normalizer.inverse_transform(Y_test_scaled)
+                diffs.append((Y_test - Y_preds).flatten())
+                Y_preds, Y_test = Y_preds.flatten(), Y_test.flatten()
+                y_preds.append(Y_preds)
+                y_true.append(Y_test)
+                sigma = np.array(diffs).std(axis=0)
+                r = []
+                for ind, (pred, s) in enumerate(zip(Y_preds, sigma)):
+                    r.append(self.risk_function(pred, s, ind))
+                    #print('END')
+                risks.append(r)
+                yield np.vstack(y_true), np.vstack(y_preds), np.vstack(risks)
+        else:
+            for i in range(curr_pos, Y.shape[0], window_test):
+                #print('fit')
+                X_observed, Y_observed = [x[i - curr_pos: i] for x in X], Y[i - curr_pos: i]
+                self.predictor.fit(X_observed, Y_observed)
+                #print('FIIIT')
+                X_test = [normalizer.transform(x[i: i + window_test]) for x, normalizer in zip(X, self.predictor.X_normalizers)]
+                Y_test_scaled = self.predictor.Y_normalizer.transform(Y[i: i + window_test])
+                Y_pred_scaled = self.predictor.predict(X_test)
+                Y_preds = self.predictor.Y_normalizer.inverse_transform(Y_pred_scaled)
+                Y_test = self.predictor.Y_normalizer.inverse_transform(Y_test_scaled)
+                diffs.append((Y_test - Y_preds))
+                #Y_preds, Y_test = Y_preds.flatten(), Y_test.flatten()
+                y_preds.append(Y_preds)
+                y_true.append(Y_test)
+                sigma = np.vstack(diffs[-window:]).std(axis=0)
+                curr_risk = []
+                for ind, pred in enumerate(Y_preds.T):
+                    r = []
+                    for p in pred:
+                        r.append(self.risk_function(p, sigma[ind], ind))
+                    curr_risk.append(r)
+                    # print('END')
+                risks.append(np.array(curr_risk).T)
+                yield np.vstack(y_true), np.vstack(y_preds), np.vstack(risks)
+
         #return y_true, y_preds, risks
 
+
+
+
+
 def get_risks_results(params):
-    add_solver = MultiplicativeModelSystem(polynomes_type=params['method'], calculate_separately=params['lambda_from_3sys'], \
+    if params['model'] == 'additive':
+        add_solver = AdditiveModelSystem(polynomes_type=params['method'], calculate_separately=params['lambda_from_3sys'], \
+                                           degrees=params['X_degree'])
+    elif params['model'] == 'multiplicative':
+        add_solver = MultiplicativeModelSystem(polynomes_type=params['method'], calculate_separately=params['lambda_from_3sys'], \
                                            degrees=params['X_degree'], activation_type=params['activation'])
+    elif params['model'] == 'arimax':
+        add_solver = ARIMAX()
 
     risk_model = RiskAnalysisModel(add_solver)
-    for y_true, y_preds, risks in risk_model.get_results(params['X'], params['y']):
+    for y_true, y_preds, risks in risk_model.get_results(params['X'], params['y'], window=params['train_window'], window_test=params['test_window']):
         yield {
         'X': params['X'], 'Y': y_true, 'Y_scaled': y_true, 'Y_preds': y_preds, 'Y_preds_scaled': y_preds,
         'Y_err': risks, 'Y_err_scaled': risks, 'logs': 'tyrgew'

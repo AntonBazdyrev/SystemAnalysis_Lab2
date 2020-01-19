@@ -169,11 +169,14 @@ class MultiplicativeModelSystem:
                     self.lambda_values[i][j][k] = {}
 
         for value in self._lambda_solver(X, Y, calculate_separately=calculate_separately):
-            yield 30*value
+            pass
+            #yield 30*value
         for value in self._alpha_solver(X, Y):
-            yield 20*value + 30
+            pass
+            #yield 20*value + 30
         for value in self._c_solver(X, Y):
-            yield 20*value + 50
+            pass
+            #yield 20*value + 50
 
     def _lambda_solver(self, X, bqi, calculate_separately=True):
         X, bqi = self._parse_vectors(X, name='X'), self._parse_vectors(bqi, name='bqi')
@@ -196,7 +199,6 @@ class MultiplicativeModelSystem:
                         self.polynomes[y_ind][x_ind][x_ind_coord] = self._get_poly(y_ind, x_ind, x_ind_coord)
                     print(results)
         else:
-            print('else')
             pr_bar_ind = 0
             for y_ind, (bqi_name, b) in enumerate(bqi.items()):
                 # print(bqi_name)

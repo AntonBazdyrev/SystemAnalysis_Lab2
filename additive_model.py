@@ -64,7 +64,7 @@ class AdditiveModelSystem:
         else:
             self.basis_gen_function = basis_sh_chebyshev
 
-        print(self.basis_gen_function)
+        #print(self.basis_gen_function)
 
     def _parse_vectors(self, vectors, name='X'):
         return {f'{name}{i + 1}': vec for i, vec in enumerate(vectors)}
@@ -142,11 +142,14 @@ class AdditiveModelSystem:
                     self.lambda_values[i][j][k] = {}
 
         for value in self._lambda_solver(X, Y, calculate_separately=calculate_separately):
-            yield 30*value
+            pass
+            #yield 30*value
         for value in self._alpha_solver(X, Y):
-            yield 20*value + 30
+            pass
+            #yield 30*value
         for value in self._c_solver(X, Y):
-            yield 20*value + 50
+            pass
+            #yield 30*value
 
     def _lambda_solver(self, X, bqi, calculate_separately=True):
         X, bqi = self._parse_vectors(X, name='X'), self._parse_vectors(bqi, name='bqi')
@@ -169,16 +172,16 @@ class AdditiveModelSystem:
                         self.polynomes[y_ind][x_ind][x_ind_coord] = self._get_poly(y_ind, x_ind, x_ind_coord)
                     print(results)
         else:
-            print('else')
+            #print('else')
             pr_bar_ind = 0
             for y_ind, (bqi_name, b) in enumerate(bqi.items()):
-                print(bqi_name)
+                #print(bqi_name)
                 x_dims = [x.shape[1] * len(basis) for basis, (k, x) in zip(self.basises, X.items())]
                 merged_x = np.hstack(
                     [np.hstack([poly(x) for poly in basis]) for basis, (k, x) in zip(self.basises, X.items())])
                 results = self.system_solver.solve(merged_x, b)
-                print(results)
-                print('MAX NORM DIFF: ', (merged_x @ results - b).max())
+                #print(results)
+                #print('MAX NORM DIFF: ', (merged_x @ results - b).max())
 
                 curr_x_ind = 0
                 for x_ind, x_dim in enumerate(x_dims):
@@ -194,7 +197,7 @@ class AdditiveModelSystem:
 
                     for x_ind_coord in range(list(X.items())[x_ind][1].shape[1]):
                         self.polynomes[y_ind][x_ind][x_ind_coord] = self._get_poly(y_ind, x_ind, x_ind_coord)
-                    print(results)
+                    #print(results)
 
     def _alpha_solver(self, X, bqi):
         X, bqi = self._parse_vectors(X, name='X'), self._parse_vectors(bqi, name='bqi')
@@ -203,8 +206,8 @@ class AdditiveModelSystem:
             x_dims = [x.shape[1] for k, x in X.items()]
             merged_x = np.hstack([self._poly_transform(x, x_ind, y_ind) for x_ind, (k, x) in enumerate(X.items())])
             results = self.system_solver.solve(merged_x, b)
-            print(results)
-            print((merged_x @ results - b).max())
+            #print(results)
+            #print((merged_x @ results - b).max())
 
             curr_x_ind = 0
             for x_ind, x_dim in enumerate(x_dims):

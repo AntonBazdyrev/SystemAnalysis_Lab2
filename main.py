@@ -26,13 +26,13 @@ class MainWindow(QWidget):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
 
-        self.__inpuut_file = QLineEdit('data/data_var1.csv')
+        self.__inpuut_file = QLineEdit('data/risk_dataset.csv')
         self.__output_file = QLineEdit('data/output_own.txt')
         self.__sample_size = QSpinBox(value=50)
-        self.__x1_dim = QSpinBox(value=2)
+        self.__x1_dim = QSpinBox(value=4)
         self.__x2_dim = QSpinBox(value=2)
         self.__x3_dim = QSpinBox(value=3)
-        self.__y_dim = QSpinBox(value=4)
+        self.__y_dim = QSpinBox(value=3)
 
         self.__chebyshev = QRadioButton('Chebyshev', checked=True)
         self.__legendre = QRadioButton('Legendre')
@@ -49,6 +49,14 @@ class MainWindow(QWidget):
         self.__gelu = QRadioButton('gelu')
         self.__softplus = QRadioButton('softplus')
         self.__sigmoid = QRadioButton('sigmoid')
+
+        self.__additive = QRadioButton('additive', checked=True)
+        self.__multiplicative = QRadioButton('multiplicative')
+        self.__arimax = QRadioButton('arimax')
+        self.__rnn = QRadioButton('rnn')
+
+        self.__train_window = QSpinBox(value=30)
+        self.__test_window = QSpinBox(value=10)
 
         self.__calc_button = QPushButton('Calculate Results')
         self.__calc_button.clicked.connect(self.__button_press)
@@ -111,16 +119,37 @@ class MainWindow(QWidget):
         activation_layout.addWidget(self.__softplus, 2, 0)
         activation_layout.addWidget(self.__sigmoid, 3, 0)
 
+        model_layout = QGridLayout()
+        model_group = QtGui.QButtonGroup(activation_layout)  # activation group
+        model_group.addButton(self.__additive)
+        model_group.addButton(self.__multiplicative)
+        model_group.addButton(self.__arimax)
+        model_group.addButton(self.__rnn)
+        model_layout.addWidget(self.__additive, 0, 0)
+        model_layout.addWidget(self.__multiplicative, 1, 0)
+        model_layout.addWidget(self.__arimax, 2, 0)
+        model_layout.addWidget(self.__rnn, 3, 0)
+
+        window_grid_layout = QGridLayout()
+        window_grid_layout.addWidget(QLabel('train_window'), 0, 0)
+        window_grid_layout.addWidget(QLabel('test_window'), 1, 0)
+        window_grid_layout.addWidget(self.__train_window, 0, 1)
+        window_grid_layout.addWidget(self.__test_window, 1, 1)
+
         menu_layout = QGridLayout()
         menu_layout.setHorizontalSpacing(50)
         menu_layout.addWidget(QLabel('Input', alignment=Qt.AlignCenter), 0, 0)
         menu_layout.addWidget(QLabel('Method', alignment=Qt.AlignCenter), 0, 1)
         menu_layout.addWidget(QLabel('Degree', alignment=Qt.AlignCenter), 0, 2)
         menu_layout.addWidget(QLabel('Activation', alignment=Qt.AlignCenter), 0, 3)
+        menu_layout.addWidget(QLabel('Model', alignment=Qt.AlignCenter), 0, 4)
+        menu_layout.addWidget(QLabel('Window', alignment=Qt.AlignCenter), 0, 5)
         menu_layout.addLayout(input_grid, 1, 0)
         menu_layout.addLayout(polynomes_grid, 1, 1)
         menu_layout.addLayout(degree_grid_layout, 1, 2)
         menu_layout.addLayout(activation_layout, 1, 3)
+        menu_layout.addLayout(model_layout, 1, 4)
+        menu_layout.addLayout(window_grid_layout, 1, 5)
 
 
 
@@ -166,6 +195,13 @@ class MainWindow(QWidget):
                 method = el.text()
         return method
 
+    def get_model(self):
+        method = ''
+        for el in [self.__additive, self.__multiplicative, self.__arimax, self.__rnn]:
+            if el.isChecked():
+                method = el.text()
+        return method
+
     def get_params(self):
         params = {}
         params['X'], params['y'] = self.get_data()
@@ -173,6 +209,9 @@ class MainWindow(QWidget):
         params['X_degree'] = [self.__x1_degree.value(), self.__x2_degree.value(), self.__x3_degree.value()]
         params['lambda_from_3sys'] = self.__lambda.isChecked()
         params['activation'] = self.get_activation()
+        params['train_window'] = self.__train_window.value()
+        params['test_window'] = self.__test_window.value()
+        params['model'] = self.get_model()
         return params
 
     @staticmethod
@@ -218,7 +257,8 @@ class MainWindow(QWidget):
                     self.graphics_tabs.addTab(widget, f'{name}{i}')
             QApplication.processEvents()
 
-            for res in get_risks_results(params):
+            for ind, res in enumerate(get_risks_results(params)):
+                self.progress.setValue(params['test_window']*100*ind/size)
                 for i in range(dim):
                     plot_data['Y']['y'][i] = res['Y'][:, i]
                     plot_data['Y']['pred'][i] = res['Y_preds'][:, i]
@@ -232,7 +272,7 @@ class MainWindow(QWidget):
 
                 self.plot_graphs(plot_data, plot_widgets, plot_pens)
                 QApplication.processEvents()
-                time.sleep(0.1)
+                #time.sleep(0.1)
 
             self.text_output.setText(res['logs'])
 
@@ -253,6 +293,3 @@ if __name__ == '__main__':
     main = MainWindow()
     main.show()
     sys.exit(app.exec_())
-
-
-
