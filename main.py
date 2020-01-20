@@ -218,9 +218,8 @@ class MainWindow(QWidget):
 
     @staticmethod
     def plot_graphs(plot_data, plot_widgets, plot_pens):
-        data_dim = len(plot_widgets['Y'])
         for widget_name, widget_data in plot_data.items():
-            for dim in range(data_dim):
+            for dim in range(len(plot_widgets[widget_name])):
                 for line_name, line_data in widget_data.items():
                     plot_widgets[widget_name][dim].plot(range(len(line_data[dim])),
                                                         line_data[dim],
@@ -239,23 +238,24 @@ class MainWindow(QWidget):
 
             size = params['y'].shape[0]
             dim = params['y'].shape[1]
-            plot_data = {'Y': {'y': [[] for _ in range(dim)], 'pred': [[] for _ in range(dim)]},
-                         'Y_error': {'error': [[] for _ in range(dim)]},
-                         'Y_scaled': {'y': [[] for _ in range(dim)], 'pred': [[] for _ in range(dim)]},
-                         'Y_error_scaled': {'error': [[] for _ in range(dim)]}
+            plot_data = {'Y': {'y': [[] for _ in range(dim)], 'pred': [[] for _ in range(dim)],
+                               'emergency': [[] for _ in range(dim)], 'crush': [[] for _ in range(dim)]},
+                         'Y_fr': {'fr': [[] for _ in range(dim)]},
+                         'FR': {'fr': [[]]},
+                         'D_Level': {'dlevel': [[]]}
                          }
             plot_widgets = {'Y': [pg.PlotWidget() for _ in range(dim)],
-                            'Y_error': [pg.PlotWidget() for _ in range(dim)],
-                            'Y_scaled': [pg.PlotWidget() for _ in range(dim)],
-                            'Y_error_scaled': [pg.PlotWidget() for _ in range(dim)]}
+                            'Y_fr': [pg.PlotWidget() for _ in range(dim)],
+                            'FR': [pg.PlotWidget()],
+                            'D_Level': [pg.PlotWidget()]}
             p1 = pg.mkPen(color=(255, 0, 0))
             p2 = pg.mkPen(color=(0, 255, 0))
             p3 = pg.mkPen(color=(0, 0, 255))
             p4 = pg.mkPen(color=(255, 255, 255))
-            plot_pens = {'Y': {'y': p1, 'pred': p2},
-                         'Y_error': {'error': p4},
-                         'Y_scaled': {'y': p1, 'pred': p2},
-                         'Y_error_scaled': {'error': p4}
+            plot_pens = {'Y': {'y': p2, 'pred': p1, 'emergency': p4, 'crush': p3},
+                         'Y_fr': {'fr': p4},
+                         'FR': {'fr': p4},
+                         'D_Level': {'dlevel': p4}
                          }
 
             self.graphics_tabs.clear()
@@ -269,13 +269,14 @@ class MainWindow(QWidget):
                 for i in range(dim):
                     plot_data['Y']['y'][i] = res['Y'][:, i]
                     plot_data['Y']['pred'][i] = res['Y_preds'][:, i]
+                    plot_data['Y']['emergency'][i] = res['Y_emergency'][:, i]
+                    plot_data['Y']['crush'][i] = res['Y_crush'][:, i]
 
-                    plot_data['Y_scaled']['y'][i] = res['Y_scaled'][:, i]
-                    plot_data['Y_scaled']['pred'][i] = res['Y_preds_scaled'][:, i]
+                    plot_data['Y_fr']['fr'][i] = res['Y_fr'][:, i]
 
-                    plot_data['Y_error']['error'][i] = res['Y_err'][:, i]
+                plot_data['FR']['fr'][0] = res['FR']
+                plot_data['D_Level']['dlevel'][0] = res['D_Level']
 
-                    plot_data['Y_error_scaled']['error'][i] = res['Y_err_scaled'][:, i]
 
                 self.plot_graphs(plot_data, plot_widgets, plot_pens)
                 QApplication.processEvents()

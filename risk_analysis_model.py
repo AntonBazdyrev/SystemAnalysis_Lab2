@@ -10,6 +10,8 @@ from arimax import ARIMAX
 EMERGENCY_VALUES = 'data/emergency_values.csv'
 CRUSH_VALUES = 'data/crush_values.csv'
 
+EM_VALUES = np.array([pd.read_csv(EMERGENCY_VALUES)['values'].values])
+CR_VALUES = np.array([pd.read_csv(CRUSH_VALUES)['values'].values])
 
 def get_risk_function(EMERGENCY_VALUES=EMERGENCY_VALUES, CRUSH_VALUES=CRUSH_VALUES):
     em = pd.read_csv(EMERGENCY_VALUES)['values'].values
@@ -120,7 +122,10 @@ def get_risks_results(params):
 
         dang_level = np.array([dang_decision(r) for r in agg_risk])
         yield {
-        'X': params['X'], 'Y': y_true, 'Y_scaled': y_true, 'Y_preds': y_preds, 'Y_preds_scaled': y_preds,
-        'Y_err': risks, 'Y_err_scaled': risks, 'logs': ''
+        'X': params['X'], 'Y': y_true, 'Y_preds': y_preds,
+        'Y_emergency': np.repeat(EM_VALUES, y_true.shape[0], axis=0),
+        'Y_crush': np.repeat(CR_VALUES, y_true.shape[0], axis=0),
+        'Y_fr': risks,  'FR': agg_risk, 'D_Level': dang_level,
+        'logs': ''
     }
 
