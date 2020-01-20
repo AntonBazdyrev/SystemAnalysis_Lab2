@@ -282,7 +282,7 @@ class MainWindow(QWidget):
                 if self.__stop_calc:
                     self.__calc_button.setText('Calculate Results')
                     return
-
+            self.progress.setValue(100)
             self.text_output.setText(res['logs'])
 
             with open(self.__output_file.text(), 'w') as f:

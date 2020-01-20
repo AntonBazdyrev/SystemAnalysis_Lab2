@@ -75,12 +75,13 @@ class RiskAnalysisModel:
                 y_preds.append(Y_preds)
                 y_true.append(Y_test)
                 sigma = np.vstack(diffs[-window:]).std(axis=0)
+                #print(sigma)
                 curr_risk = []
                 for ind, pred in enumerate(Y_preds.T):
                     r = []
                     for p in pred:
                         r.append(self.risk_function(p, sigma[ind], ind))
-                    curr_risk.append(r)
+                    curr_risk.append(len(pred)*[np.mean(r)])
                     # print('END')
                 risks.append(np.array(curr_risk).T)
                 yield np.vstack(y_true), np.vstack(y_preds), np.vstack(risks)
@@ -88,8 +89,19 @@ class RiskAnalysisModel:
         #return y_true, y_preds, risks
 
 
+from functools import reduce
 
-
+def dang_decision(r):
+    if r <= 0.1:
+        return 0
+    elif r <= 0.4:
+        return 1
+    elif r <= 0.7:
+        return 2
+    elif r <= 0.9:
+        return 3
+    else:
+        return 4
 
 def get_risks_results(params):
     if params['model'] == 'additive':
@@ -103,14 +115,12 @@ def get_risks_results(params):
 
     risk_model = RiskAnalysisModel(add_solver)
     for y_true, y_preds, risks in risk_model.get_results(params['X'], params['y'], window=params['train_window'], window_test=params['test_window']):
+        agg_risk = 1 - reduce(lambda x, y: x*y, 1 - risks.T)
+        #print(agg_risk)
+
+        dang_level = np.array([dang_decision(r) for r in agg_risk])
         yield {
         'X': params['X'], 'Y': y_true, 'Y_scaled': y_true, 'Y_preds': y_preds, 'Y_preds_scaled': y_preds,
-        'Y_err': risks, 'Y_err_scaled': risks, 'logs': 'tyrgew'
-    }
-
-    #print(y_true)
-    return {
-        'X': params['X'], 'Y': y_true, 'Y_scaled': y_true, 'Y_preds': y_preds, 'Y_preds_scaled': y_preds,
-        'Y_err': risks, 'Y_err_scaled': risks, 'logs': 'tyrgew'
+        'Y_err': risks, 'Y_err_scaled': risks, 'logs': ''
     }
 
